@@ -1,0 +1,89 @@
+#  /etc/rsyslog.conf    Configuration file for rsyslog.
+#
+#                       For more information see
+#                       /usr/share/doc/rsyslog-doc/html/rsyslog_conf.html
+
+#################
+#### MODULES ####
+#################
+
+$ModLoad imuxsock # provides support for local system logging
+{% if config.imkllog|default(true) -%}
+$ModLoad imklog   # provides kernel logging support (previously done by rklogd)
+{%- endif %}
+{% if config.imjournal|default(false) -%}
+$ModLoad imjournal # provides access to the systemd journal
+{%- endif %}
+#$ModLoad immark  # provides --MARK-- message capability
+{% if config.listenudp|default(false) -%}
+# provides UDP syslog reception
+$ModLoad imudp
+$UDPServerRun 514
+{%- endif %}
+
+{% if config.listentcp|default(false) -%}
+# provides TCP syslog reception
+$ModLoad imtcp
+$InputTCPServerRun {{ config.listentcpprt|default('514') }}
+{%- endif %}
+
+###########################
+#### GLOBAL DIRECTIVES ####
+###########################
+
+# Log anything (except mail) of level info or higher.
+# Don't log private authentication messages!
+*.info;mail.none;authpriv.none;cron.none {{ config.logpath|default('/var/log/messages') }}
+
+# The authpriv file has restricted access.
+authpriv.*                                              {{ config.authpriv|default('/var/log/secure') }}
+
+# Log all the mail messages in one place and then filter all unwanted messages
+mail.*                                                  -{{ config.mail|default('/var/log/maillog') }}
+
+# Log cron stuff
+cron.*                                                  {{ config.cron|default('/var/log/cron') }}
+
+# Everybody gets emergency messages
+*.emerg                                                 {{ config.emerg|default('*') }}
+
+# Save news errors of level crit and higher in a special file.
+uucp,news.crit                                          {{ config.news|default('/var/log/spooler') }}
+
+# Save boot messages also to boot.log
+local7.*                                                {{ config.bootlog|default('/var/log/boot.log') }}
+
+
+{% if config.imjournal|default(false) -%}
+# Where to place auxiliary files
+$WorkDirectory {{ config.get('workdirectory', '/var/spool/rsyslog') }}
+{%- endif %}
+
+#
+# Use traditional timestamp format.
+# To enable high precision timestamps, comment out the following line.
+#
+$ActionFileDefaultTemplate {{ config.get('template', 'RSYSLOG_TraditionalFileFormat') }}
+
+#
+# Include all config files in /etc/rsyslog.d/
+#
+$IncludeConfig /etc/rsyslog.d/*.conf
+
+{% if config.logbasepath|default(false) %}
+$template DailyPerHostLogs,"{{ config.logbasepath }}/%HOSTNAME%-%FROMHOST-IP%/%$YEAR%/%$MONTH%/%$DAY%.log"
+*.* -?DailyPerHostLogs
+{% endif %}
+
+{% if config.imjournal|default(false) -%}
+# Turn off message reception via local log socket;
+# local messages are retrieved through imjournal now.
+$OmitLocalLogging on
+
+# File to store the position in the journal
+$IMJournalStateFile imjournal.state
+# If there is no saved state yet, don't read in the whole bulk of messages.
+# # This means some of the older messages won't be collected by rsyslog,
+# # but it also prevents a potential huge spike in resource utilization.
+# $IMJournalIgnorePreviousMessages on
+{%- endif %}

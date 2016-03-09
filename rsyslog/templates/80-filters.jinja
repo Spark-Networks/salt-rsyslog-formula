@@ -1,0 +1,19 @@
+{% for filter in config.get('filters', []) -%}
+{{ filter }}
+{% endfor %}
+
+{% if config.target|default(false) %}
+{% if config.protocol|default('udp') == 'tcp' -%}
+*.* @@{{ config.target }}
+{% else %}
+*.* @{{ config.target }}
+{% endif %}
+{% else %}
+{% for target in config.get('targets', []) -%}
+{% if config.protocol|default('udp') == 'tcp' %}
+*.* @@{{ target }}
+{% else %}
+*.* @{{ target }}
+{% endif %}
+{% endfor %}
+{% endif %}

@@ -6,7 +6,7 @@ rsyslog:
   file.managed:
     - name: {{ rsyslog.config }}
     - template: jinja
-    - source: salt://rsyslog/templates/rsyslog.conf.jinja
+    - source: salt://rsyslog/templates/{{ salt['pillar.get']('rsyslog-template', 'rsyslog.conf.jinja') }}
     - context:
       config: {{ salt['pillar.get']('rsyslog', {}) }}
   service.running:
@@ -14,7 +14,7 @@ rsyslog:
     - name: {{ rsyslog.service }}
     - require:
       - pkg: {{ rsyslog.package }}
-    - watch: 
+    - watch:
       - file: {{ rsyslog.config }}
 
 workdirectory:
@@ -25,19 +25,30 @@ workdirectory:
     - mode: 755
     - makedirs: True
 
-{% for filename in salt['pillar.get']('rsyslog:custom', ["50-default.conf"]) %}
+rsyslog.d:
+  file.directory:
+    - name: {{ rsyslog.custom_config_path }}
+    - user: {{ rsyslog.runuser }}
+    - group: {{ rsyslog.rungroup }}
+    - mode: 755
+    - makedirs: True
+    - order: 1
+
+{% for filename in salt['pillar.get']('rsyslog:custom', []) %}
 {% set basename = filename.split('/')|last %}
 rsyslog_custom_{{basename}}:
   file.managed:
-    - name: {{ rsyslog.custom_config_path }}/{{ basename|replace(".jinja", "") }}
+    - name: {{ rsyslog.custom_config_path }}/{{ basename|replace(".jinja", ".conf") }}
     {% if basename != filename %}
     - source: {{ filename }}
     {% else %}
-    - source: salt://rsyslog/files/{{ filename }}
+    - source: salt://rsyslog/templates/{{ filename }}
     {% endif %}
     {% if filename.endswith('.jinja') %}
     - template: jinja
     {% endif %}
+    - context:
+      config: {{ salt['pillar.get']('rsyslog', {}) }}
     - watch_in:
       - service: {{ rsyslog.service }}
 {% endfor %}
