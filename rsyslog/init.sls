@@ -48,7 +48,7 @@ rsyslog_custom_{{basename}}:
     - template: jinja
     {% endif %}
     - context:
-      config: {{ salt['pillar.get']('rsyslog', {}) }}
+      config: {{ salt['pillar.get']('rsyslog', {})|json }}
     - watch_in:
       - service: {{ rsyslog.service }}
 {% endfor %}
