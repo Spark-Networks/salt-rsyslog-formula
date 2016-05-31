@@ -25,6 +25,12 @@ workdirectory:
     - mode: 755
     - makedirs: True
 
+{% if grains['os_family'] == 'RedHat' %}
+syslog:
+  service.disabled:
+    - enable: false
+{% endif %}
+
 rsyslog.d:
   file.directory:
     - name: {{ rsyslog.custom_config_path }}
