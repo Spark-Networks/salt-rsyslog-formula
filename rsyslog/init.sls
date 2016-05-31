@@ -27,9 +27,12 @@ workdirectory:
 
 {% if grains['os_family'] == 'RedHat' %}
 syslog:
-  service.disabled:
-    - enable: false
+  service.dead:
+    - enable: False
+    - require_in:
+      - service: {{ rsyslog.service }}
 {% endif %}
+
 
 rsyslog.d:
   file.directory:
